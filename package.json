@@ -2,6 +2,21 @@
   "name": "nutrient-loop",
   "version": "1.0.0",
   "private": true,
+  "description": "End-to-end document intelligence pipeline: upload, extract with the Nutrient DWS API, store in SQLite, and query with an LLM. Includes an MCP server simulation.",
+  "keywords": [
+    "nextjs",
+    "typescript",
+    "nutrient",
+    "dws",
+    "document-ai",
+    "document-extraction",
+    "mcp",
+    "openai",
+    "sqlite",
+    "react",
+    "tailwindcss"
+  ],
+  "license": "MIT",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

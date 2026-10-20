@@ -1,16 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAllDocuments } from "@/lib/db";
+import { getAllDocuments, getDocument } from "@/lib/db";
 
 export async function POST(request: NextRequest) {
   try {
-    const { prompt } = await request.json();
-    const docs = getAllDocuments();
-    if (docs.length === 0) {
-      return NextResponse.json({ error: "No documents uploaded yet" }, { status: 400 });
+    const body = await request.json().catch(() => null);
+    const prompt = body?.prompt;
+    if (typeof prompt !== "string" || !prompt.trim()) {
+      return NextResponse.json({ error: "A prompt is required." }, { status: 400 });
     }
 
-    // Get most recent document's full content
-    const { getDocument } = await import("@/lib/db");
+    const docs = getAllDocuments();
+    if (docs.length === 0) {
+      return NextResponse.json(
+        { error: "No documents uploaded yet — process a document first." },
+        { status: 400 }
+      );
+    }
+
+    // The simulation always targets the most recently processed document.
     const latest = getDocument(docs[0].id);
     if (!latest) {
       return NextResponse.json({ error: "Document not found" }, { status: 404 });
@@ -18,7 +25,11 @@ export async function POST(request: NextRequest) {
 
     const openaiKey = process.env.OPENAI_API_KEY;
     if (!openaiKey) {
-      return NextResponse.json({ answer: "AI not configured" });
+      return NextResponse.json({
+        answer:
+          "AI not configured — set OPENAI_API_KEY in your .env to run this simulation. " +
+          "Extraction and storage are still fully functional.",
+      });
     }
 
     const systemPrompt =
@@ -43,16 +54,27 @@ export async function POST(request: NextRequest) {
       });
 
       if (!res.ok) {
-        console.error("OpenAI error:", res.status);
-        return NextResponse.json({ answer: "AI not configured" });
+        console.error("OpenAI error:", res.status, await res.text().catch(() => ""));
+        return NextResponse.json({
+          answer:
+            "AI service unavailable — the Q&A backend could not be reached. " +
+            "Extraction and storage are still fully functional.",
+        });
       }
 
       const data = await res.json();
-      const answer = data.choices?.[0]?.message?.content || "No response";
+      const answer = data.choices?.[0]?.message?.content;
+      if (!answer) {
+        return NextResponse.json({ answer: "The model returned an empty response." });
+      }
       return NextResponse.json({ answer });
     } catch (err) {
       console.error("OpenAI request failed:", err);
-      return NextResponse.json({ answer: "AI not configured" });
+      return NextResponse.json({
+        answer:
+          "AI service unavailable — the Q&A backend could not be reached. " +
+          "Extraction and storage are still fully functional.",
+      });
     }
   } catch (err) {
     console.error("MCP simulate error:", err);
