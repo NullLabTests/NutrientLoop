@@ -14,19 +14,13 @@ NutrientLoop is a full-stack Next.js 15 application that demonstrates how to bui
 
 ## Demo
 
-<p align="center">
-  <video src="./demo-video.mp4" width="800" controls></video>
-</p>
+![NutrientLoop Demo](./demo.gif)
 
-<p align="center">
-  <a href="./demo-video.mp4">Watch the demo video</a>
-</p>
+[Download Full Demo Video](./demo-video.mp4)
 
-## Screenshots
+## Screenshot
 
-<p align="center">
-  <img src="./screenshot.png" alt="NutrientLoop Screenshot" width="800" />
-</p>
+![NutrientLoop Interface](./screenshot.png)
 
 ## How It Works
 
