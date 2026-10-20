@@ -37,7 +37,7 @@ into document workflows.
 
 ![NutrientLoop end-to-end demo — upload, extract, browse and ask questions](./demo.gif)
 
-▶️ **[Watch the full-resolution video](https://github.com/NullLabTests/NutrientLoop/releases/download/demo-video/nutrientloop-demo.mp4)**
+▶️ **[Watch the full-resolution video](https://github.com/NullLabTests/NutrientLoop/blob/main/media/demo.mp4?raw=true)**
 
 The recording shows the complete loop: selecting a PDF, the Nutrient extraction round-trip, the
 rendered markdown, a chat question, the document library and the MCP simulation.

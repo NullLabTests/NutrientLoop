@@ -3,7 +3,6 @@ export interface ExtractionResult {
   metadata: {
     pages: number | null;
     processing_time_ms: number | null;
-    output_format: string | null;
   };
 }
 
@@ -47,8 +46,7 @@ export async function extractDocument(file: File | Blob, filename: string): Prom
     throw new Error("Nutrient returned an unexpected response.");
   }
 
-  const markdown: string =
-    data.output?.markdown ?? data.markdown ?? data.content ?? data.text ?? "";
+  const markdown: string = data.output?.markdown ?? "";
   if (!markdown.trim()) {
     console.error("Nutrient response contained no markdown:", Object.keys(data));
     throw new Error("Nutrient returned no extractable content for this file.");
@@ -59,7 +57,6 @@ export async function extractDocument(file: File | Blob, filename: string): Prom
     metadata: {
       pages: data.metrics?.pagesProcessed ?? null,
       processing_time_ms: data.metrics?.processingTimeMs ?? null,
-      output_format: data.configuration?.outputFormat ?? "markdown",
     },
   };
 }
