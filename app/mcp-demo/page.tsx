@@ -9,11 +9,11 @@ export default function McpDemo() {
   const [result, setResult] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSimulate = async () => {
+  const handleRun = async () => {
     setLoading(true);
     setResult("");
     try {
-      const res = await fetch("/api/mcp-simulate", {
+      const res = await fetch("/api/mcp-query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
@@ -21,7 +21,7 @@ export default function McpDemo() {
       const data = await res.json();
       setResult(data.answer || data.error || "");
     } catch (err) {
-      setResult("Error running simulation");
+      setResult("Error running the prompt");
     } finally {
       setLoading(false);
     }
@@ -57,10 +57,12 @@ export default function McpDemo() {
       </section>
 
       <section className="mb-8">
-        <h2 className="text-xl font-semibold mb-2">Live Demo (Simulation)</h2>
-        <p className="text-sm text-orange-600 mb-3">
-          Label this clearly as a "simulation" of what the MCP server would do (the real MCP
-          server runs in the AI client, not in our app)
+        <h2 className="text-xl font-semibold mb-2">Live Demo</h2>
+        <p className="text-sm text-gray-600 mb-3">
+          This panel issues the same kind of request the MCP server would handle, against this
+          app&rsquo;s own backend. The real MCP server runs inside your AI client (Cursor, Claude
+          Desktop) rather than inside a web app, so running it here lets you see the whole flow
+          end to end.
         </p>
         <div className="flex gap-2 mb-3">
           <input
@@ -71,7 +73,7 @@ export default function McpDemo() {
             placeholder="Enter a prompt..."
           />
           <button
-            onClick={handleSimulate}
+            onClick={handleRun}
             disabled={loading}
             className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
           >

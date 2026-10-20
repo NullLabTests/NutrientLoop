@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { answerFromDocument } from "@/lib/answer";
 
 const SYSTEM_PROMPT =
   "You are a document analyst. Answer questions using ONLY the provided document content. If the answer isn't in the document, say so.";
@@ -22,11 +23,9 @@ export async function POST(request: NextRequest) {
 
     const openaiKey = process.env.OPENAI_API_KEY;
     if (!openaiKey) {
-      return NextResponse.json({
-        answer:
-          "AI not configured — set OPENAI_API_KEY in your .env to enable document Q&A. " +
-          "Extraction and storage are still fully functional.",
-      });
+      // No model configured: answer deterministically from the document instead
+      // of returning a dead end, so the demo stays useful out of the box.
+      return NextResponse.json({ answer: answerFromDocument(user_question, document_markdown) });
     }
 
     const messages = [
@@ -50,23 +49,23 @@ export async function POST(request: NextRequest) {
         console.error("OpenAI error:", res.status, await res.text().catch(() => ""));
         return NextResponse.json({
           answer:
-            "AI service unavailable — the Q&A backend could not be reached. " +
-            "Extraction and storage are still fully functional.",
+            "The LLM backend could not be reached, so here is what the document itself says:\n\n" +
+            answerFromDocument(user_question, document_markdown),
         });
       }
 
       const data = await res.json();
       const answer = data.choices?.[0]?.message?.content;
       if (!answer) {
-        return NextResponse.json({ answer: "The model returned an empty response." });
+        return NextResponse.json({ answer: answerFromDocument(user_question, document_markdown) });
       }
       return NextResponse.json({ answer });
     } catch (err) {
       console.error("OpenAI request failed:", err);
       return NextResponse.json({
         answer:
-          "AI service unavailable — the Q&A backend could not be reached. " +
-          "Extraction and storage are still fully functional.",
+          "The LLM backend could not be reached, so here is what the document itself says:\n\n" +
+          answerFromDocument(user_question, document_markdown),
       });
     }
   } catch (err) {

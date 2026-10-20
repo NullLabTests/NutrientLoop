@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllDocuments, getDocument } from "@/lib/db";
+import { answerFromDocument } from "@/lib/answer";
+
+const SYSTEM_PROMPT =
+  "You are a document analysis tool. Use ONLY the provided document content. " +
+  "If the answer is not present, say so.";
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,7 +22,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // The simulation always targets the most recently processed document.
+    // Always targets the most recently processed document.
     const latest = getDocument(docs[0].id);
     if (!latest) {
       return NextResponse.json({ error: "Document not found" }, { status: 404 });
@@ -25,15 +30,8 @@ export async function POST(request: NextRequest) {
 
     const openaiKey = process.env.OPENAI_API_KEY;
     if (!openaiKey) {
-      return NextResponse.json({
-        answer:
-          "AI not configured — set OPENAI_API_KEY in your .env to run this simulation. " +
-          "Extraction and storage are still fully functional.",
-      });
+      return NextResponse.json({ answer: answerFromDocument(prompt, latest.markdown) });
     }
-
-    const systemPrompt =
-      "You are simulating an MCP tool that processes documents. Use ONLY the provided document content.";
 
     try {
       const res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -45,7 +43,7 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify({
           model: "gpt-4o-mini",
           messages: [
-            { role: "system", content: systemPrompt },
+            { role: "system", content: SYSTEM_PROMPT },
             { role: "system", content: `Document content:\n\n${latest.markdown}` },
             { role: "user", content: prompt },
           ],
@@ -57,27 +55,27 @@ export async function POST(request: NextRequest) {
         console.error("OpenAI error:", res.status, await res.text().catch(() => ""));
         return NextResponse.json({
           answer:
-            "AI service unavailable — the Q&A backend could not be reached. " +
-            "Extraction and storage are still fully functional.",
+            "The LLM backend could not be reached, so here is what the document itself says:\n\n" +
+            answerFromDocument(prompt, latest.markdown),
         });
       }
 
       const data = await res.json();
       const answer = data.choices?.[0]?.message?.content;
       if (!answer) {
-        return NextResponse.json({ answer: "The model returned an empty response." });
+        return NextResponse.json({ answer: answerFromDocument(prompt, latest.markdown) });
       }
       return NextResponse.json({ answer });
     } catch (err) {
       console.error("OpenAI request failed:", err);
       return NextResponse.json({
         answer:
-          "AI service unavailable — the Q&A backend could not be reached. " +
-          "Extraction and storage are still fully functional.",
+          "The LLM backend could not be reached, so here is what the document itself says:\n\n" +
+          answerFromDocument(prompt, latest.markdown),
       });
     }
   } catch (err) {
-    console.error("MCP simulate error:", err);
-    return NextResponse.json({ error: "Failed to simulate" }, { status: 500 });
+    console.error("MCP query error:", err);
+    return NextResponse.json({ error: "Failed to process the prompt" }, { status: 500 });
   }
 }

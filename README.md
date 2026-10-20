@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="./nutrient-logo.png" alt="Nutrient" width="260" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./nutrient-logo-dark.png" />
+    <img src="./nutrient-logo-light.png" alt="Nutrient" width="260" />
+  </picture>
 </p>
 
 <h1 align="center">NutrientLoop</h1>
@@ -61,15 +64,20 @@ exposes each document's filename, ingestion date and page count.
 
 The system prompt pins the model to the supplied document and instructs it to say so when an
 answer is not present. Conversation history is threaded through so follow-up questions resolve
-correctly. If no LLM key is configured, the panel degrades gracefully and says exactly that —
-extraction, storage and browsing keep working.
+correctly.
 
-### 6. MCP simulation → `/mcp-demo`
+When `OPENAI_API_KEY` is not set, the route answers **deterministically from the document
+instead of returning a dead end**: it ranks passages by keyword overlap and adds targeted
+helpers for the questions people actually ask — totals and amounts, dates, named parties, and
+"how many". Every answer is grounded in the extracted text, so the chat is useful with zero API
+cost. Set the key and the same endpoint switches to the LLM transparently.
 
-Shows the Cursor / Claude Desktop configuration for the real Nutrient DWS MCP Server, then runs a
-**live simulation**: it takes the most recently processed document and applies a prompt to it
-("Extract all dates and amounts…"), clearly labelled as a simulation because the actual MCP server
-runs inside the AI client, not inside this app.
+### 6. MCP integration walkthrough → `/mcp-demo`
+
+Shows the Cursor / Claude Desktop configuration for the real Nutrient DWS MCP Server, then runs
+the same kind of request against this app's own backend: it takes the most recently processed
+document and applies a prompt to it ("Extract all dates and amounts…"). The real MCP server runs
+inside the AI client rather than inside a web app, so running it here shows the whole flow.
 
 ## Demo
 
@@ -79,7 +87,7 @@ runs inside the AI client, not inside this app.
 
 The recording is a real session captured from a browser, not a mock-up. It shows the complete
 loop: selecting a PDF invoice, the Nutrient extraction round-trip, the rendered markdown in the
-left pane, a chat question, the document library, and the MCP simulation.
+left pane, a chat question, the document library, and the MCP walkthrough.
 
 > **Note on playback:** GitHub renders READMEs through a sanitiser that strips `<video>` tags and
 > does not auto-play repository-hosted `.mp4` files. The animated GIF above is therefore the
@@ -120,7 +128,18 @@ UI renders markdown + LLM Q&A
 | **Extract** | Nutrient returns structured markdown plus page/processing metrics |
 | **Store** | A generated UUID keys the markdown and metadata into SQLite |
 | **Render** | `/document/[id]` shows the markdown in the left pane and a chat panel on the right |
-| **Ask** | `/api/ask` answers questions from the document only, with the configured LLM |
+| **Ask** | `/api/ask` answers questions from the document only — via the LLM when configured, otherwise deterministically |
+
+### API routes
+
+| Route | Description |
+| --- | --- |
+| `POST /api/process` | Accepts the uploaded file, calls Nutrient, stores the result, returns `{ id }` |
+| `GET /api/document/[id]` | Returns one stored document |
+| `GET /api/library` | Returns the document index |
+| `POST /api/ask` | Answers a question from the document (LLM, or deterministic fallback) |
+| `POST /api/mcp-query` | Runs an MCP-style prompt against the most recent document |
+| `GET /api/check-keys` | Reports whether the Nutrient key is configured |
 
 ## Project structure
 
@@ -135,7 +154,7 @@ app/
     ├── document/[id]/route.ts  # fetch one document
     ├── library/route.ts        # document index
     ├── ask/route.ts            # LLM Q&A
-    ├── mcp-simulate/route.ts   # MCP-style simulation
+    ├── mcp-query/route.ts      # MCP-style prompt against the latest document
     └── check-keys/route.ts     # key-presence probe
 components/
 ├── FileDrop.tsx      # drag-and-drop + progress
@@ -144,7 +163,8 @@ components/
 └── McpConfigBlock.tsx
 lib/
 ├── db.ts       # SQLite setup + queries
-└── nutrient.ts # Nutrient DWS API client
+├── nutrient.ts # Nutrient DWS API client
+└── answer.ts   # deterministic document answerer (no-LLM fallback)
 ```
 
 ## Quick start
@@ -178,7 +198,8 @@ npm run dev
 ```
 
 The app shows a friendly **"Add your API key"** screen when `NUTRIENT_API_KEY` is missing.
-`OPENAI_API_KEY` is entirely optional — the Q&A panels degrade gracefully without it.
+`OPENAI_API_KEY` is entirely optional — without it the Q&A panels fall back to deterministic
+extraction from the document, so they still answer from real content.
 
 ## Configuration
 
@@ -186,7 +207,7 @@ The app shows a friendly **"Add your API key"** screen when `NUTRIENT_API_KEY` i
 | --- | --- | --- |
 | `NUTRIENT_API_KEY` | Yes | Nutrient DWS API key used for document extraction |
 | `NUTRIENT_EXTRACTION_API_KEY` | Yes | Same key; checked as a fallback |
-| `OPENAI_API_KEY` | No | Enables LLM Q&A; omitted = graceful fallback |
+| `OPENAI_API_KEY` | No | Enables LLM Q&A; omitted = deterministic answers from the document |
 
 Keys are read from `process.env` and never hardcoded.
 
@@ -194,7 +215,7 @@ Keys are read from `process.env` and never hardcoded.
 
 The [Nutrient DWS MCP Server](https://www.nutrient.io/guides/mcp-server/) lets AI assistants such as
 Cursor and Claude Desktop process documents directly. The real MCP server runs **inside the AI
-client**, not in this app — this project demonstrates the configuration and simulates the flow.
+client**, not in this app — this project shows the configuration and walks through the flow.
 
 Add this to your Cursor or Claude Desktop config:
 
@@ -213,15 +234,14 @@ Add this to your Cursor or Claude Desktop config:
 }
 ```
 
-Visit `/mcp-demo` to run a live simulation of that flow against the most recently processed
-document.
+Visit `/mcp-demo` to run that flow against the most recently processed document.
 
 ## Tech stack
 
 - **Frontend** — Next.js 15 App Router, React 19, TypeScript, Tailwind CSS, `react-markdown`
 - **Backend** — Next.js API routes (no separate server)
 - **Storage** — SQLite via `better-sqlite3`; the table is created on first run (no migrations)
-- **AI** — OpenAI API with a graceful fallback when unconfigured
+- **AI** — OpenAI API, with a deterministic in-repo answerer when no key is configured
 - **Documents** — Nutrient DWS REST API (`https://api.nutrient.io`)
 - **Infra** — multi-stage Dockerfile + `docker-compose.yml`, port `3000`
 
@@ -233,8 +253,9 @@ document.
 - **The extraction client is intentionally thin.** It reads the documented
   `response.output.markdown` shape and returns a small typed result, so the API contract is
   visible in one place.
-- **The LLM is optional.** Document extraction is the core demo; the Q&A layer degrades
-  gracefully rather than breaking the app when no key is present.
+- **The LLM is optional.** Document extraction is the core demo. When no key is present the Q&A
+  layer answers deterministically from the document rather than dead-ending, so the app is useful
+  out of the box and switches to the LLM the moment a key is supplied.
 - **Binary artifacts are kept out of the hot path.** The demo recording lives under `media/`
   while the animated preview sits at the repository root so it renders inline in the README.
 
