@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./nutrient-logo.png" alt="Nutrient Logo" width="120" />
+  <img src="./nutrient-logo.png" alt="Nutrient Logo" width="100" />
 </p>
 
 <h1 align="center">NutrientLoop</h1>
@@ -11,6 +11,16 @@
 ## What is NutrientLoop?
 
 NutrientLoop is a full-stack Next.js 15 application that demonstrates how to build production-ready document processing workflows using [Nutrient](https://www.nutrient.io/) DWS APIs. Upload any PDF, DOCX, PNG, or JPG document and instantly transform it into searchable, AI-queryable markdown with intelligent Q&A capabilities. The pipeline showcases real-world integration patterns for document intelligence, including cloud-based extraction, local storage, and AI-assisted analysis.
+
+## Demo
+
+![NutrientLoop Demo](./demo.mp4)
+
+*Demo video showcasing the document upload, extraction, and Q&A flow.*
+
+## Screenshot
+
+![NutrientLoop GUI](./screenshot.png)
 
 ## How It Works
 
