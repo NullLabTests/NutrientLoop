@@ -1,17 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import ReactMarkdown from "react-markdown";
+import SiteHeader from "@/components/SiteHeader";
 import McpConfigBlock from "@/components/McpConfigBlock";
 
 export default function McpDemo() {
   const [prompt, setPrompt] = useState("Extract all dates and amounts from the uploaded PDF");
   const [result, setResult] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleRun = async () => {
     setLoading(true);
     setResult("");
+    setError("");
     try {
       const res = await fetch("/api/mcp-query", {
         method: "POST",
@@ -19,9 +22,13 @@ export default function McpDemo() {
         body: JSON.stringify({ prompt }),
       });
       const data = await res.json();
-      setResult(data.answer || data.error || "");
+      if (!res.ok) {
+        setError(data.error || "Could not run the prompt.");
+        return;
+      }
+      setResult(data.answer || "No result returned.");
     } catch (err) {
-      setResult("Error running the prompt");
+      setError("Could not reach the server. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -29,17 +36,7 @@ export default function McpDemo() {
 
   return (
     <main className="container mx-auto px-4 py-8 max-w-3xl">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">MCP Server Demo</h1>
-        <div className="flex gap-4 text-sm">
-          <Link href="/" className="text-blue-600 hover:underline">
-            Upload
-          </Link>
-          <Link href="/library" className="text-blue-600 hover:underline">
-            Library
-          </Link>
-        </div>
-      </div>
+      <SiteHeader title="MCP Server Demo" subtitle="Nutrient DWS MCP integration walkthrough" />
 
       <section className="mb-8">
         <h2 className="text-xl font-semibold mb-2">About the Nutrient DWS MCP Server</h2>
@@ -80,9 +77,16 @@ export default function McpDemo() {
             {loading ? "Running..." : "Run"}
           </button>
         </div>
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded text-sm">
+            {error}
+          </div>
+        )}
         {result && (
           <div className="bg-gray-50 border p-3 rounded">
-            <pre className="whitespace-pre-wrap text-sm">{result}</pre>
+            <div className="prose prose-sm max-w-none">
+              <ReactMarkdown>{result}</ReactMarkdown>
+            </div>
           </div>
         )}
       </section>

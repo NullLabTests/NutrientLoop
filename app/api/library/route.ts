@@ -7,6 +7,9 @@ export async function GET() {
     return NextResponse.json({ docs });
   } catch (err) {
     console.error("Library error:", err);
-    return NextResponse.json({ docs: [] });
+    return NextResponse.json(
+      { error: "Failed to load the document library" },
+      { status: 500 }
+    );
   }
 }

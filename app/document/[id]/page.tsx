@@ -53,7 +53,7 @@ export default function DocumentPage() {
           <MarkdownView content={doc.markdown} />
         </div>
         <div className="overflow-hidden">
-          <ChatPanel documentMarkdown={doc.markdown} documentId={doc.id} />
+          <ChatPanel documentMarkdown={doc.markdown} />
         </div>
       </div>
       <footer className="p-2 text-center text-xs text-gray-500 border-t bg-white">

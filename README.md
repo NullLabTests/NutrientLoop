@@ -39,9 +39,11 @@ three seconds.
 
 ### 1. Drag-and-drop upload → `/`
 
-Accepts `.pdf`, `.docx`, `.png` and `.jpg`. The file never touches disk in the browser — it is
-streamed as multipart form data to `/api/process` while a progress spinner reports the three
-stages: `Uploading → Processing → Extracting`.
+Accepts `.pdf`, `.docx`, `.png` and `.jpg` (up to 25 MB). The file never touches disk in the
+browser — it is streamed as multipart form data to `/api/process` while a progress bar reports
+the three stages: `Uploading → Processing → Extracting`. Type and size are checked on both the
+client and the server, so a bad file is rejected with an inline message instead of a silent
+failure.
 
 ### 2. Cloud extraction → Nutrient DWS
 
@@ -57,8 +59,10 @@ exposes each document's filename, ingestion date and page count.
 
 ### 4. Two-pane reading view → `/document/[id]`
 
-- **Left pane** — the extracted markdown rendered with `react-markdown`.
-- **Right pane** — a chat panel that answers questions using the document as its only source.
+- **Left pane** — the extracted markdown rendered with `react-markdown` and styled with Tailwind
+  Typography.
+- **Right pane** — a chat panel that answers questions using the document as its only source;
+  answers are rendered as markdown so bold text and quotes format correctly.
 
 ### 5. Document-grounded Q&A → `/api/ask`
 
@@ -67,10 +71,20 @@ answer is not present. Conversation history is threaded through so follow-up que
 correctly.
 
 When `OPENAI_API_KEY` is not set, the route answers **deterministically from the document
-instead of returning a dead end**: it ranks passages by keyword overlap and adds targeted
-helpers for the questions people actually ask — totals and amounts, dates, named parties, and
-"how many". Every answer is grounded in the extracted text, so the chat is useful with zero API
-cost. Set the key and the same endpoint switches to the LLM transparently.
+instead of returning a dead end**. The in-repo answerer (`lib/answer.ts`) ranks passages by
+keyword overlap and has targeted helpers for the questions people actually ask:
+
+- **Totals and amounts** — picks the most specific line that states a figure (`Total Due` /
+  `Grand Total` before `Subtotal` before `Tax`), and honours a question that asks for a
+  specific one.
+- **Dates** — returns the dated lines.
+- **Named parties** — returns the billing/contact lines, falling back to capitalised names.
+- **"How many"** — counts occurrences of the noun phrase in the document.
+
+It also flattens the HTML tables Nutrient emits and joins label/value lines that the extractor
+splits, so invoice fields stay together. Every answer is grounded in the extracted text — when
+the answer is not present it says so rather than inventing one — so the chat is useful with zero
+API cost. Set the key and the same endpoint switches to the LLM transparently.
 
 ### 6. MCP integration walkthrough → `/mcp-demo`
 
@@ -157,9 +171,10 @@ app/
     ├── mcp-query/route.ts      # MCP-style prompt against the latest document
     └── check-keys/route.ts     # key-presence probe
 components/
-├── FileDrop.tsx      # drag-and-drop + progress
-├── MarkdownView.tsx  # react-markdown wrapper
-├── ChatPanel.tsx     # conversation UI
+├── SiteHeader.tsx    # shared branded header + nav
+├── FileDrop.tsx      # drag-and-drop picker
+├── MarkdownView.tsx  # react-markdown wrapper (Tailwind Typography)
+├── ChatPanel.tsx     # conversation UI (renders answers as markdown)
 └── McpConfigBlock.tsx
 lib/
 ├── db.ts       # SQLite setup + queries
@@ -197,7 +212,7 @@ npm run build && npm start
 npm run dev
 ```
 
-The app shows a friendly **"Add your API key"** screen when `NUTRIENT_API_KEY` is missing.
+The app shows a friendly **"Add your API key"** notice when `NUTRIENT_API_KEY` is missing.
 `OPENAI_API_KEY` is entirely optional — without it the Q&A panels fall back to deterministic
 extraction from the document, so they still answer from real content.
 
@@ -238,7 +253,7 @@ Visit `/mcp-demo` to run that flow against the most recently processed document.
 
 ## Tech stack
 
-- **Frontend** — Next.js 15 App Router, React 19, TypeScript, Tailwind CSS, `react-markdown`
+- **Frontend** — Next.js 15 App Router, React 19, TypeScript, Tailwind CSS + Tailwind Typography, `react-markdown`
 - **Backend** — Next.js API routes (no separate server)
 - **Storage** — SQLite via `better-sqlite3`; the table is created on first run (no migrations)
 - **AI** — OpenAI API, with a deterministic in-repo answerer when no key is configured
@@ -248,6 +263,8 @@ Visit `/mcp-demo` to run that flow against the most recently processed document.
 ## Design decisions
 
 - **One API route per action** keeps each handler small and testable in isolation.
+- **Input is validated on both sides.** Type and size checks live in the upload UI and are
+  repeated on the server, so the route stays safe to call directly.
 - **SQLite, not a server database.** The demo should run with a single `docker-compose up` and no
   external services; the schema is created on first run.
 - **The extraction client is intentionally thin.** It reads the documented

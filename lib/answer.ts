@@ -18,8 +18,8 @@ const STOPWORDS = new Set([
   "than", "too", "very", "i", "me", "my", "mine", "us", "him", "so", "up", "out",
   "off", "over", "under", "again", "more", "most", "other", "such", "only", "own",
   "same", "also", "just", "now", "tell", "show", "give", "list", "find", "get",
-  "please", "document", "doc", "file", "pdf", "content", "text", "page", "pages",
-  "many", "much", "does", "did", "done",
+  "please", "document", "doc", "file", "pdf", "content", "text", "many", "much",
+  "done",
 ]);
 
 function escapeRegExp(s: string): string {
@@ -105,17 +105,49 @@ function score(passage: string, kws: string[]): number {
   return total;
 }
 
-const CURRENCY = /[$€£]\s?\d[\d,]*(?:\.\d{1,2})?/g;
-const DATE = /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2},?\s+\d{4}\b/gi;
-const TOTAL_LINE = /\b(total|amount due|due|balance|subtotal|tax|net|grand)\b/i;
+// Non-global forms are used with `.test()`: a global regex carries `lastIndex`
+// across calls, which made answers alternate between correct and wrong.
+const CURRENCY = /[$€£]\s?\d[\d,]*(?:\.\d{1,2})?/;
+const DATE =
+  /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2},?\s+\d{4}\b/i;
 
-function countMatches(markdown: string, kws: string[]): number {
+function allMatches(pattern: string, source: string): string[] {
+  return source.match(new RegExp(pattern, "g")) || [];
+}
+
+function countMatches(markdown: string, terms: string[]): number {
   const hay = markdown.toLowerCase();
   let n = 0;
-  for (const kw of kws) {
-    n += (hay.match(new RegExp(`\\b${escapeRegExp(kw)}\\w*\\b`, "gi")) || []).length;
+  for (const term of terms) {
+    const words = term
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(Boolean);
+    if (!words.length) continue;
+    const pattern = words
+      .map((w) => `\\b${escapeRegExp(stem(w))}\\w*\\b`)
+      .join("\\s+");
+    n += (hay.match(new RegExp(pattern, "gi")) || []).length;
   }
   return n;
+}
+
+/** How specifically a line names a total-like figure (higher = more specific). */
+const TOTAL_PATTERNS: { re: RegExp; score: number }[] = [
+  { re: /\b(total due|amount due|balance due|total payable|grand total)\b/i, score: 6 },
+  { re: /\btotal\b/i, score: 5 },
+  { re: /\bsubtotal\b/i, score: 4 },
+  { re: /\b(net total|net)\b/i, score: 3 },
+  { re: /\b(tax|vat|gst)\b/i, score: 2 },
+  { re: /\b(rate|price|cost|amount|sum|charge|fee)\b/i, score: 1 },
+];
+
+function totalScore(passage: string): number {
+  let best = 0;
+  for (const { re, score } of TOTAL_PATTERNS) {
+    if (re.test(passage)) best = Math.max(best, score);
+  }
+  return best;
 }
 
 function quote(passage: string): string {
@@ -150,22 +182,44 @@ export function answerFromDocument(question: string, markdown: string): string {
   const candidates = passages(markdown);
 
   // "how many X" -> count occurrences of X in the document.
-  const howMany = q.match(/^how many\s+([a-z]+)/);
+  const howMany = q.match(/^how many\s+(.+)/);
   if (howMany) {
-    const noun = stem(howMany[1]);
-    const n = countMatches(markdown, [noun]);
+    const words = howMany[1]
+      .replace(/[?.!]+$/, "")
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((w) => w.length >= 3 && !STOPWORDS.has(w));
+    // Drop trailing verb forms ("how many items are listed" -> "items").
+    while (words.length && /(ed|ing)$/.test(words[words.length - 1])) words.pop();
+    const phrase = words.join(" ");
+    const n = phrase ? countMatches(markdown, [phrase]) : 0;
     if (n > 0) {
-      return `The document contains **${n}** mention${n === 1 ? "" : "s"} of “${howMany[1]}”.`;
+      return `The document contains **${n}** mention${n === 1 ? "" : "s"} of “${phrase}”.`;
     }
   }
 
-  // "total / amount / due" -> prefer lines that actually state a total.
-  if (/\b(total|amount|sum|due|balance|price|cost|payable)\b/.test(q)) {
-    const totals = candidates.filter((p) => TOTAL_LINE.test(p) && CURRENCY.test(p));
-    const values = unique(markdown.match(CURRENCY) || []);
-    if (totals.length) {
-      return `From the document:\n\n${totals.map(quote).join("\n\n")}`;
+  // "total / amount / due / subtotal / tax" -> prefer the line that actually
+  // states the requested figure, most specific first.
+  if (/\b(total|amount|sum|due|balance|price|cost|payable|subtotal|tax|vat)\b/.test(q)) {
+    const wantSubtotal = /\bsubtotal\b/.test(q);
+    const wantTax = /\b(tax|vat|gst)\b/.test(q);
+    const ranked = candidates
+      .filter((p) => CURRENCY.test(p))
+      .map((p) => {
+        let s = totalScore(p);
+        const lower = p.toLowerCase();
+        if (wantSubtotal && /\bsubtotal\b/i.test(lower)) s += 10;
+        if (wantTax && /\b(tax|vat|gst)\b/i.test(lower)) s += 10;
+        return { p, s };
+      })
+      .filter((r) => r.s > 0)
+      .sort((a, b) => b.s - a.s);
+
+    const picked = unique(ranked.slice(0, 2).map((r) => r.p));
+    if (picked.length) {
+      return `From the document:\n\n${picked.map(quote).join("\n\n")}`;
     }
+    const values = unique(allMatches(CURRENCY.source, markdown));
     if (values.length) {
       return `Monetary values found in the document: ${values.join(", ")}.`;
     }
@@ -180,7 +234,7 @@ export function answerFromDocument(question: string, markdown: string): string {
   }
 
   // "who / billed to / contact" -> named parties in the document.
-  if (/\b(who|whom|billed to|bill to|attn|contact|customer|client|from)\b/.test(q)) {
+  if (/\b(who|whom|billed to|bill to|attn|contact|customer|client)\b/.test(q)) {
     const named = candidates.filter((p) => /\b(bill to|attn|customer|client|from)\b/i.test(p));
     if (named.length) {
       return `Named in the document:\n\n${named.map(quote).join("\n\n")}`;

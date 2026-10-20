@@ -1,6 +1,9 @@
 # Multi-stage build
 FROM node:20-alpine AS builder
 WORKDIR /app
+# better-sqlite3 ships no musl prebuild, so the native addon must be compiled
+# here; the build deps stay in this stage and never reach the small runner image.
+RUN apk add --no-cache python3 make g++
 COPY package*.json ./
 RUN npm ci
 COPY . .

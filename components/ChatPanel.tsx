@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import ReactMarkdown from "react-markdown";
 
 interface Message {
   role: "user" | "assistant";
@@ -9,14 +10,13 @@ interface Message {
 
 export default function ChatPanel({
   documentMarkdown,
-  documentId,
 }: {
   documentMarkdown: string;
-  documentId: string;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,6 +26,7 @@ export default function ChatPanel({
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setLoading(true);
+    setError("");
 
     try {
       const res = await fetch("/api/ask", {
@@ -38,9 +39,16 @@ export default function ChatPanel({
         }),
       });
       const data = await res.json();
-      setMessages((prev) => [...prev, { role: "assistant", content: data.answer || data.error }]);
+      if (!res.ok) {
+        setError(data.error || "Could not answer that question.");
+        return;
+      }
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: data.answer || "No answer returned." },
+      ]);
     } catch (err) {
-      setMessages((prev) => [...prev, { role: "assistant", content: "Error sending question" }]);
+      setError("Could not reach the server. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -48,23 +56,43 @@ export default function ChatPanel({
 
   return (
     <div className="flex flex-col h-full border rounded-lg bg-white">
-      <div className="p-3 border-b bg-gray-50">
+      <div className="p-3 border-b bg-gray-50 flex items-center justify-between">
         <h3 className="font-semibold text-sm">Ask about this document</h3>
+        <span className="text-xs text-gray-400">
+          {messages.length ? `${messages.length} messages` : "grounded in the document"}
+        </span>
       </div>
       <div className="flex-1 overflow-auto p-3 space-y-3">
+        {messages.length === 0 && (
+          <p className="text-xs text-gray-400">
+            Answers come only from this document. Try &ldquo;What is the total due?&rdquo;,
+            &ldquo;When is it dated?&rdquo;, or &ldquo;Who is it billed to?&rdquo;
+          </p>
+        )}
         {messages.map((msg, i) => (
           <div
             key={i}
             className={`p-2 rounded text-sm ${
-              msg.role === "user" ? "bg-blue-100 ml-4" : "bg-gray-100 mr-4"
+              msg.role === "user" ? "bg-blue-50 ml-4" : "bg-gray-50 mr-4"
             }`}
           >
-            <div className="font-semibold text-xs mb-1">
+            <div className="font-semibold text-xs mb-1 text-gray-500">
               {msg.role === "user" ? "You" : "Assistant"}
             </div>
-            <div className="whitespace-pre-wrap">{msg.content}</div>
+            {msg.role === "user" ? (
+              <div className="whitespace-pre-wrap">{msg.content}</div>
+            ) : (
+              <div className="prose prose-sm max-w-none prose-p:my-1 prose-blockquote:my-1 prose-blockquote:border-blue-300">
+                <ReactMarkdown>{msg.content}</ReactMarkdown>
+              </div>
+            )}
           </div>
         ))}
+        {error && (
+          <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded p-2">
+            {error}
+          </div>
+        )}
         {loading && <div className="text-sm text-gray-500">Thinking...</div>}
       </div>
       <form onSubmit={sendMessage} className="p-2 border-t flex gap-2">
