@@ -17,6 +17,10 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
+# Never bake secrets into the image: runtime config arrives via the
+# environment (docker-compose passes .env through `env_file`).
+RUN rm -f /app/.env /app/.env.local /app/.env.production /app/.env.development
+
 USER nextjs
 EXPOSE 3000
 ENV PORT 3000
