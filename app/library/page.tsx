@@ -50,9 +50,7 @@ export default function Library() {
                   </Link>
                 </td>
                 <td className="p-2 border text-sm">{doc.created_at}</td>
-                <td className="p-2 border text-sm">
-                  {doc.metadata?.pages || doc.metadata?.page_count || "-"}
-                </td>
+                <td className="p-2 border text-sm">{doc.page_count ?? "-"}</td>
               </tr>
             ))}
           </tbody>

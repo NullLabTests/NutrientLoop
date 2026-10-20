@@ -12,9 +12,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
     }
 
-    const { markdown, raw } = await extractDocument(file, file.name);
+    const { markdown, metadata } = await extractDocument(file, file.name);
     const id = uuidv4();
-    insertDocument(id, file.name, markdown, raw);
+    insertDocument(id, file.name, markdown, metadata);
 
     return NextResponse.json({ id });
   } catch (err: any) {
