@@ -113,6 +113,23 @@ left pane, a chat question, the document library, and the MCP walkthrough.
 | --- | --- |
 | ![Upload page](./screenshot-upload.png) | ![Results page](./screenshot.png) |
 
+### Real document: an AI research paper
+
+![NutrientLoop reading an arXiv paper on vision-language models and negation](./screenshot-ai-paper.png)
+
+The pipeline is not invoice-specific — it handles real research PDFs too. Here an arXiv paper
+(`2501.09425v2`, *"Vision-Language Models Do Not Understand Negation"* by Alhamoud, Alshammari,
+Tian, Li and Ghassemi) was dropped into the uploader:
+
+- **Left pane** — the whole paper extracted to markdown and rendered with typography styling:
+  the title, author list, affiliations, and the abstract all come back as clean, structured text.
+- **Right pane** — the chat answers questions using only the paper's own content, quoting the
+  passages it drew from (e.g. the NegBench task design and the finding that scaling model size
+  does not improve negation understanding). Nothing is invented: if the answer is not in the
+  paper, the chat says so.
+
+This is the same `understand`-mode extraction the invoice demo uses — only the document changes.
+
 ---
 
 ## How it works
