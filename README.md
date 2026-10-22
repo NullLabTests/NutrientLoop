@@ -11,6 +11,13 @@
   <strong>An end-to-end document intelligence pipeline built on the Nutrient DWS APIs</strong>
 </p>
 
+> **Unofficial project — not affiliated with Nutrient.** NutrientLoop is an independent,
+> community-built reference implementation. It is **not** an official Nutrient product and is
+> **not** endorsed by, sponsored by, or affiliated with Nutrient (formerly PSPDFKit GmbH).
+> “Nutrient” and the Nutrient logo are trademarks of their respective owner and are used here
+> only to identify the API this demo integrates with. See
+> [Legal & attribution](#legal--attribution).
+
 <p align="center">
   <a href="#quick-start">Quick start</a> ·
   <a href="#what-it-does">What it does</a> ·
@@ -26,7 +33,7 @@ Every document AI product eventually needs the same three things: get bytes off 
 machine, turn them into structure, and answer questions about them. **NutrientLoop** is a small,
 complete, runnable reference for exactly that pipeline. It uses the real
 [Nutrient DWS](https://www.nutrient.io) extraction API end to end — not a mock — so what you see
-here behaves like a production integration.
+here behaves like a real integration.
 
 It is intentionally compact: one framework, one database, one API route per action, and no
 build-time configuration beyond a single API key. Read it top to bottom and you understand the
@@ -293,6 +300,46 @@ Visit `/mcp-demo` to run that flow against the most recently processed document.
 - **Binary artifacts are kept out of the hot path.** The demo recording lives under `media/`
   while the animated preview sits at the repository root so it renders inline in the README.
 
+## Legal & attribution
+
+**Independent project.** NutrientLoop is a personal/community reference implementation. It is not
+an official Nutrient product and is not affiliated with, endorsed by, sponsored by, or supported
+by Nutrient (formerly PSPDFKit GmbH). All code and opinions are the maintainers' own.
+
+**Trademarks.** “Nutrient”, the Nutrient name and logo, “PSPDFKit”, and any related marks are
+trademarks or registered trademarks of Nutrient and/or its affiliates. All other trademarks are
+the property of their respective owners. These marks are used here only to identify the
+third-party service this demo integrates with (nominative/descriptive use); their use does not
+imply any endorsement, partnership, or sponsorship. If you are a rights holder and would like a
+mark removed or used differently, please open an issue and it will be addressed promptly.
+
+**No official assets or credentials.** This repository does not include any Nutrient API keys,
+credentials, proprietary content, or confidential material. To run the demo against the real API
+you must supply your own Nutrient account and key.
+
+**Third-party terms.** Your use of the Nutrient DWS API is governed by Nutrient's own terms of
+service and privacy policy. Nothing in this repository grants you any rights to Nutrient's
+services, content, or trademarks.
+
+**Data and privacy.** Documents uploaded to a running instance are sent to the configured
+extraction provider (Nutrient DWS) and the extracted result is stored locally in SQLite. Do not
+upload confidential, personal, or regulated data to a public or shared instance of this demo.
+The sample document, screenshots, and demo recording are illustrative only.
+
+**Third-party content.** The screenshot in this README shows a page from the arXiv paper
+*“Vision-Language Models Do Not Understand Negation”* (arXiv:2501.09425), © its authors, and is
+included solely to demonstrate the app's rendering. It is not part of the project's code or
+documentation and will be removed on request from the rights holder.
+
+**No warranty.** The software is provided “as is”, without warranty of any kind, as set out in
+the [MIT License](./LICENSE). The maintainers accept no liability for any use of the software or
+of the third-party services it connects to.
+
+**Not legal advice.** This notice is provided for clarity and is not legal advice; consult a
+qualified professional for your jurisdiction.
+
 ## License
 
-MIT — see [LICENSE](./LICENSE).
+The source code in this repository is released under the [MIT License](./LICENSE). The MIT licence
+covers this project's code only — it does not grant any rights to the Nutrient name, logo, or
+services, or to any third-party content.
